@@ -51,7 +51,7 @@ function sendAudio(form, chunks) {
     data.append('form', JSON.stringify(formData));
 
     // Replace this URL with your server-side processing URL
-    fetch('/url-to-handle-data', {
+    fetch('50.17.113.42/formGPT', {
         method: 'POST',
         body: data
     })
