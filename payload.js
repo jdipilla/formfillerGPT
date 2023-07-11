@@ -1,4 +1,4 @@
-function formfillergpthelper (){
+// function formfillergpthelper(){
     let isRecording = false;
     let chunks = [];
     let micdata = [];
@@ -7,6 +7,8 @@ function formfillergpthelper (){
     let mediaRecorder;
     let termsCheckbox;
     let thisFormFillerGPTform;
+    let theseFormFillerGPTforms = [];
+    let theseFormFillerGPTMics = [];
     let lastResponse;
     let countdownTimer;
     let countdownInterval;
@@ -90,8 +92,9 @@ function formfillergpthelper (){
     // Call the function to append the styles
     appendStyles();
     document.querySelectorAll('form').forEach(form => {
+        theseFormFillerGPTforms.push(form);
         if(!isValidForm(form)) {dbg('noforms');return;} 
-
+    
         const magicButtonContainer = document.createElement('div');
         magicButtonContainer.classList.add('formgpt-form-genie');
         
@@ -101,24 +104,62 @@ function formfillergpthelper (){
         magicButton.addEventListener('click', handleMicClick);
         
         magicButtonContainer.appendChild(magicButton);
-
-        const firstInput = form.querySelector('input, select, textarea');
-
-        // Get the coordinates of the form
-        const formRect = form.getBoundingClientRect();
-        // Get the coordinates of the input in relation to the form
-        const firstInputRect = firstInput.getBoundingClientRect();
-
-        const calculatedLeft = firstInputRect.left - formRect.left;
-        const calculatedTop = firstInputRect.top - formRect.top;
-
-        magicButtonContainer.style.position = 'absolute';
-        magicButtonContainer.style.left = `${calculatedLeft}px`;
-        magicButtonContainer.style.top = `${calculatedTop - 20}px`; 
-
-        form.appendChild(magicButtonContainer);
+    
+        const firstInput = form.querySelector('input:not([type="hidden"]), select, textarea');
+    
+        let targetElement = form;
+    
+        // Look for the label of the first input
+        const firstInputLabel = form.querySelector(`label[for="${firstInput.id}"]`);
+    
+        if(firstInputLabel) {
+            // Append the button to the label if it exists
+            targetElement = firstInputLabel;
+            dbg('labelID')
+        } else {
+            // If input is nested within a label, or within an element that is nested within a label, append the button to the label
+            let parentElement = firstInput.parentElement;
+            while(parentElement && parentElement !== form) {
+                if(parentElement.tagName.toLowerCase() === 'label') {
+                    targetElement = parentElement;
+                    dbg('labelNested')
+                    break;
+                }
+                parentElement = parentElement.parentElement;
+            }
+        }
+    
+        // Append the button to the target element
+        targetElement.appendChild(magicButtonContainer);
+    
+        if(targetElement === form) {
+            dbg('direct2form')
+            // If we're appending directly to the form, adjust the button's position
+    
+            // Ensure that the form's position is not 'static'
+            const formPosition = getComputedStyle(form).position;
+            if (['static', 'initial', 'inherit'].includes(formPosition)) {
+                form.style.position = 'relative';
+            }
+    
+            // Get the coordinates of the input in relation to the form
+            const firstInputRect = firstInput.getBoundingClientRect();
+            const formRect = form.getBoundingClientRect();
+    
+            const calculatedLeft = firstInputRect.left - formRect.left;
+            const calculatedTop = firstInputRect.top - formRect.top;
+    
+            magicButtonContainer.style.position = 'absolute';
+            magicButtonContainer.style.left = `${calculatedLeft}px`;
+            magicButtonContainer.style.top = `${calculatedTop - 20}px`;
+        }
+    
+        theseFormFillerGPTMics.push(magicButtonContainer);
+        console.log(form, magicButtonContainer)
     });
-
+    
+    
+    
     function handleMicClick(event) {
         thisFormFillerGPTform = event.target.form
         if (!isRecording) {
@@ -232,17 +273,6 @@ function formfillergpthelper (){
         // More rules can be added here...
         dbg('goodformfound');
         return true; // The form is valid
-    }
-
-    function getRelativeParent(element) {
-        if (element.nodeName === 'BODY') {
-            return element;
-        }
-        const position = getComputedStyle(element).position;
-        if (position === 'relative' || position === 'absolute') {
-            return element;
-        }
-        return getRelativeParent(element.parentElement);
     }
 
     function launchPopup(event) {
@@ -370,5 +400,5 @@ function formfillergpthelper (){
     }
 
     appendMicrophoneToForm(); // Run once at the start
-    setInterval(appendMicrophoneToForm, 5000); // Then run every 5 seconds
-}
+    // setInterval(appendMicrophoneToForm, 5000); // Then run every 5 seconds
+// }
