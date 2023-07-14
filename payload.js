@@ -1,4 +1,4 @@
-// function formfillergpthelper(){
+function formfillergpthelper(){
     let isRecording = false;
     let chunks = [];
     let micdata = [];
@@ -371,5 +371,5 @@
     }
 
     appendMicrophoneToForm(); // Run once at the start
-    // setInterval(appendMicrophoneToForm, 5000); // Then run every 5 seconds
-// }
+    setInterval(appendMicrophoneToForm, 5000); // Then run every 5 seconds
+}
