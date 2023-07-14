@@ -12,12 +12,27 @@
     let lastResponse;
     let countdownTimer;
     let countdownInterval;
+    let thisPopupContainer
 
+    function handleMicClick(event) {
+        thisFormFillerGPTform = event.target.form
+        dbg(['thisformsent',thisFormFillerGPTform,event,event.target,event.target.form])
+        if (!isRecording) {
+            launchPopup(event);
+        } else {
+            stopRecording();
+            event.target.classList.remove('recording');
+        }
+    }
     function stopRecording() {
+        let didstop = false
+        clearInterval(countdownInterval);
         if(recorder && recorder.state !== 'inactive') {
+            didstop = true
             recorder.stop();
             isRecording = false;
         }
+        dbg(['didStop',didstop])
     }
     function startCountdown() {
         countdownTimer = 60;
@@ -26,7 +41,6 @@
             document.querySelector('.formgpt-form-genie-timer').textContent = `Recording will stop in ${countdownTimer} seconds`;
             if (countdownTimer === 0) {
                 stopRecording();
-                clearInterval(countdownInterval);
             }
         }, 1000);
     }
@@ -91,84 +105,6 @@
     }
     // Call the function to append the styles
     appendStyles();
-    document.querySelectorAll('form').forEach(form => {
-        theseFormFillerGPTforms.push(form);
-        if(!isValidForm(form)) {dbg('noforms');return;} 
-    
-        const magicButtonContainer = document.createElement('div');
-        magicButtonContainer.classList.add('formgpt-form-genie');
-        
-        const magicButton = document.createElement('button');
-        magicButton.classList.add('formgpt-form-genie-mic');
-        magicButton.innerHTML = '🎤'; 
-        magicButton.addEventListener('click', handleMicClick);
-        
-        magicButtonContainer.appendChild(magicButton);
-    
-        const firstInput = form.querySelector('input:not([type="hidden"]), select, textarea');
-    
-        let targetElement = form;
-    
-        // Look for the label of the first input
-        const firstInputLabel = form.querySelector(`label[for="${firstInput.id}"]`);
-    
-        if(firstInputLabel) {
-            // Append the button to the label if it exists
-            targetElement = firstInputLabel;
-            dbg('labelID')
-        } else {
-            // If input is nested within a label, or within an element that is nested within a label, append the button to the label
-            let parentElement = firstInput.parentElement;
-            while(parentElement && parentElement !== form) {
-                if(parentElement.tagName.toLowerCase() === 'label') {
-                    targetElement = parentElement;
-                    dbg('labelNested')
-                    break;
-                }
-                parentElement = parentElement.parentElement;
-            }
-        }
-    
-        // Append the button to the target element
-        targetElement.appendChild(magicButtonContainer);
-    
-        if(targetElement === form) {
-            dbg('direct2form')
-            // If we're appending directly to the form, adjust the button's position
-    
-            // Ensure that the form's position is not 'static'
-            const formPosition = getComputedStyle(form).position;
-            if (['static', 'initial', 'inherit'].includes(formPosition)) {
-                form.style.position = 'relative';
-            }
-    
-            // Get the coordinates of the input in relation to the form
-            const firstInputRect = firstInput.getBoundingClientRect();
-            const formRect = form.getBoundingClientRect();
-    
-            const calculatedLeft = firstInputRect.left - formRect.left;
-            const calculatedTop = firstInputRect.top - formRect.top;
-    
-            magicButtonContainer.style.position = 'absolute';
-            magicButtonContainer.style.left = `${calculatedLeft}px`;
-            magicButtonContainer.style.top = `${calculatedTop - 20}px`;
-        }
-    
-        theseFormFillerGPTMics.push(magicButtonContainer);
-        console.log(form, magicButtonContainer)
-    });
-    
-    
-    
-    function handleMicClick(event) {
-        thisFormFillerGPTform = event.target.form
-        if (!isRecording) {
-            launchPopup(event);
-        } else {
-            stopRecording();
-            event.target.classList.remove('recording');
-        }
-    }
 
     function grabFormData(form) {
         const formData = new FormData(form);
@@ -176,8 +112,7 @@
     }
 
     function sendAudio(sourceElement, chunks, event) {
-        recorder.stop();
-        clearInterval(countdownInterval);
+        stopRecording();
         dbg(['sendingAudio',sourceElement,chunks,thisblob,micdata])
         const blob = new Blob(micdata, { 'type': 'audio/webm' }) // creates a blob from our audio chunks
         // Get form control elements
@@ -189,7 +124,7 @@
         const data = new FormData();
         data.append('audio', blob);
         data.append('formdata', formData);
-        data.append('formHTML', thisFormFillerGPTform);
+        data.append('formHTML', thisFormFillerGPTform.innerHTML);
         data.append('loc', window.location.href);
         data.append('path', window.location.pathname);
         data.append('host', window.location.hostname);
@@ -241,6 +176,7 @@
             });
             event.target.classList.remove('recording');
             event.target.classList.add('complete');
+            document.body.removeChild(thisPopupContainer);
             setTimeout(() => {
                 event.target.classList.remove('complete');
             }, 3000);
@@ -316,32 +252,31 @@
         if (document.querySelector('.formgpt-form-genie-popup-container')) {
             return;
         }
-
-        const popupContainer = document.createElement('div');
+        let popupContainer = document.createElement('div');
         popupContainer.classList.add('formgpt-form-genie-popup-container');
-
+        
         const popupContent = document.createElement('div');
         popupContent.classList.add('formgpt-form-genie-popup-content');
-
+        
         const popupHeader = document.createElement('h3');
         popupHeader.textContent = "Speak out the form";
-
+        
         // Create the wave form visual animated graphic
         const waveform = document.createElement('div');
         waveform.classList.add('formgpt-form-genie-waveform');
-
+        
         // Create the countdown timer
         const timer = document.createElement('p');
         timer.classList.add('formgpt-form-genie-timer');
-
+        
         // Create the buttons
+        thisPopupContainer = popupContainer;
         const cancelButton = document.createElement('button');
         cancelButton.classList.add('formgpt-form-genie-cancel');
         cancelButton.innerHTML = '✗';
         cancelButton.addEventListener('click', () => {
             stopRecording();
-            clearInterval(countdownInterval);
-            document.body.removeChild(popupContainer);
+            document.body.removeChild(thisPopupContainer);
         });
 
         const submitButton = document.createElement('button');
@@ -355,8 +290,6 @@
 
         submitButton.addEventListener('click', (event) => {
             if (termsCheckbox.checked) {
-                stopRecording();
-                clearInterval(countdownInterval);
                 // Checkbox is checked, proceed with the submission
                 sendAudio(thisFormFillerGPTform, chunks, event);
                 //chunks = []; // Reset chunks for the next recording
@@ -393,9 +326,47 @@
 
     function appendMicrophoneToForm() {
         document.querySelectorAll('form').forEach(form => {
-            if(!isValidForm(form)) { dbg('noforms'); return; } 
+            if(form.getAttribute('data-processed') === 'true') {dbg('wasprocessed');return;}
+            form.setAttribute('data-processed', 'true');
+            theseFormFillerGPTforms.push(form);
+            if(!isValidForm(form)) {dbg('noforms');return;} 
         
-            // your existing microphone append logic...
+            const magicButtonContainer = document.createElement('div');
+            magicButtonContainer.classList.add('formgpt-form-genie');
+            
+            const magicButton = document.createElement('button');
+            magicButton.classList.add('formgpt-form-genie-mic');
+            magicButton.innerHTML = '🎤'; 
+            magicButton.addEventListener('click', handleMicClick);
+            
+            magicButtonContainer.appendChild(magicButton);
+        
+            const firstField = form.querySelector('input:not([type="hidden"]), select, textarea');
+        
+            let targetElement = firstField.parentElement;
+        
+            // Adjust button to the exact position of the firstField
+            magicButtonContainer.style.position = 'absolute';
+            const firstFieldRect = firstField.getBoundingClientRect();
+            const targetElementRect = targetElement.getBoundingClientRect();
+            magicButtonContainer.style.left = `${firstFieldRect.left - targetElementRect.left}px`;
+            magicButtonContainer.style.top = `${firstFieldRect.top - targetElementRect.top}px`;
+        
+            // Set opacity and z-index
+            magicButtonContainer.style.opacity = '0.5';
+            magicButtonContainer.style.zIndex = '999';
+        
+            // Append the button to the first field's parent
+            targetElement.appendChild(magicButtonContainer);
+        
+            // If parent's position is 'static', it won't affect the absolute positioning of the button
+            const parentPosition = getComputedStyle(targetElement).position;
+            if (['static', 'initial', 'inherit'].includes(parentPosition)) {
+                targetElement.style.position = 'relative';
+            }
+        
+            // theseFormFillerGPTMics.push(magicButtonContainer);
+            console.log(form, magicButtonContainer)
         });
     }
 
